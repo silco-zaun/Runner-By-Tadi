@@ -1,29 +1,19 @@
 
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class GameManager : Singleton<GameManager>
 {
-
-    [SerializeField] private GameObject gameOverPanel;
-    [SerializeField] private GameObject startingText;
-    [SerializeField] private GameObject newRecordPanel;
-    [SerializeField] private Text scoreText;
-    [SerializeField] private Text coinText;
-    [SerializeField] private Text newRecordText;
-    [SerializeField] private GameObject[] characterPrefabs;
-
-    public bool IsGameStarted { get; private set; }
-    public int Score { get; private set; }
-    public bool IsGamePaused { get; private set; }
-    public bool GameOver { get; set; }
+    public bool IsGameStarted { get; set; }
+    public int Score { get; set; }
+    public bool IsGamePaused { get; set; }
+    public bool IsGameOver { get; set; }
 
     //private AdManager adManager;
 
     private new void Awake()
     {
-        base.Awake();
-
         int index = PlayerPrefs.GetInt("SelectedCharacter");
         //GameObject go = Instantiate(characterPrefabs[index], transform.position, Quaternion.identity);
         //adManager = FindObjectOfType<AdManager>();
@@ -31,10 +21,6 @@ public class GameManager : Singleton<GameManager>
 
     private void Start()
     {
-        Score = 0;
-        Time.timeScale = 1;
-        GameOver = IsGameStarted = IsGamePaused = false;
-
         //adManager.RequestBanner();
         //adManager.RequestInterstitial();
         //adManager.RequestRewardBasedVideo();
@@ -47,10 +33,8 @@ public class GameManager : Singleton<GameManager>
         //scoreText.text = Score.ToString();
 
         //Game Over
-        if (GameOver)
+        if (IsGameOver)
         {
-            Time.timeScale = 0;
-
             /*
             if (Score > PlayerPrefs.GetInt("HighScore", 0))
             {
@@ -68,15 +52,7 @@ public class GameManager : Singleton<GameManager>
                 //    adManager.ShowRewardBasedVideo();
             }*/
 
-            gameOverPanel.SetActive(true);
             //Destroy(gameObject);
-        }
-
-        //Start Game
-        if (MyInputManager.tap && !IsGameStarted)
-        {
-            IsGameStarted = true;
-            //Destroy(startingText);
         }
     }
 }

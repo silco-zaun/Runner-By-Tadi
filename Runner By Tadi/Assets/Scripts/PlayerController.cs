@@ -1,14 +1,11 @@
 using System.Collections;
-using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
-using static UnityEngine.GraphicsBuffer;
 
-public class PlayerController : MonoBehaviour
+public class PlayerController : Singleton<PlayerController>
 {
-    [SerializeField] private AudioClip jumpSoundEffect;
+    [SerializeField] private PolyCityUISystemController ui;
 
-    private CharacterController controller;
+    private CharacterController characterController;
     private Animator animator;
     private Vector3 velocity;
     private Vector3 move;
@@ -28,21 +25,39 @@ public class PlayerController : MonoBehaviour
     private int currentLane = 1; // target position to move to
     private float laneDistance = 2.5f;
     private int sideMoveDirection = 0;
-    private float sideMoveSpeed = 10f;
+    private float sideMoveSpeed = 30f;
+    private Vector3 startPosition;
+    private float zPosition;
+    private float totalZDistanceMoved = 0f;
+    private int coin = 0;
 
     private void Start()
     {
-        controller = GetComponent<CharacterController>();
+        characterController = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
-        originalHeight = controller.height;
+        originalHeight = characterController.height;
+        startPosition = transform.position;
+        zPosition = transform.position.z;
+        coin = 0;
     }
 
     private void Update()
     {
+        if (GameManager.Ins.IsGameOver)
+        {
+            return;
+        }
+
+        if (!GameManager.Ins.IsGameStarted)
+        {
+            return;
+        }
+
+        CalculateMoveDistance();
         HandleMovement();
 
         // Check if the player is grounded
-        //isGrounded = controller.isGrounded;
+        //isGrounded = characterController.isGrounded;
         isGrounded = Physics.CheckSphere(groundCheck.position, 0.17f, groundLayer);
 
         // Gravity
@@ -55,38 +70,42 @@ public class PlayerController : MonoBehaviour
         {
             velocity.y = -2f; // small negative value to keep the player grounded
         }
-
+        ;
         // Jump
-        if (isGrounded && Input.GetKeyDown(KeyCode.UpArrow))
+        //if (isGrounded && Input.GetKeyDown(KeyCode.UpArrow))
+        if (isGrounded && MyInputManager.Ins.swipeUp)
         {
             Jump();
         }
 
-        controller.Move(velocity * Time.deltaTime);
+        characterController.Move(velocity * Time.deltaTime);
 
         // Slide
-        if (isGrounded && !isSliding && Input.GetKeyDown(KeyCode.DownArrow))
+        //if (isGrounded && !isSliding && Input.GetKeyDown(KeyCode.DownArrow))
+        if (isGrounded && !isSliding && MyInputManager.Ins.swipeDown)
         {
             StartCoroutine(SlideRoutine());
         }
 
         // Move Left
-        if (Input.GetKeyDown(KeyCode.LeftArrow))
+        //if (Input.GetKeyDown(KeyCode.LeftArrow))
+        if (MyInputManager.Ins.swipeLeft)
         {
             sideMoveDirection = -1;
             currentLane = Mathf.Clamp(currentLane + sideMoveDirection, 0, 2);
         }
 
         // Move Right
-        if (Input.GetKeyDown(KeyCode.RightArrow))
+        //if (Input.GetKeyDown(KeyCode.RightArrow))
+        if (MyInputManager.Ins.swipeRight)
         {
             sideMoveDirection = 1;
             currentLane = Mathf.Clamp(currentLane + sideMoveDirection, 0, 2);
         }
 
-        SideMoving();
+        SideMove();
 
-        controller.Move(move * Time.deltaTime);
+        characterController.Move(move * Time.deltaTime);
 
         animator.SetFloat("Speed", forwardSpeed);
         animator.SetFloat("VerticalSpeed", velocity.y);
@@ -97,12 +116,35 @@ public class PlayerController : MonoBehaviour
     {
         if (hit.transform.tag == "Obstacle")
         {
-            GameManager.Ins.GameOver = true; 
-
+            ui.GameOver();
         }
     }
 
-    void HandleMovement()
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.transform.tag == "Coin")
+        {
+            coin++;
+
+            Destroy(other.transform.gameObject);
+
+            AudioManager.Ins.PlaySound("Coin");
+        }
+    }
+
+    public void ResetPlayer()
+    {
+        transform.position = startPosition;
+        GameManager.Ins.Score = 0;
+        move = Vector3.zero;
+        velocity = Vector3.zero;
+        animator.SetFloat("Speed", 0);
+        animator.SetFloat("VerticalSpeed", 0);
+        animator.SetBool("IsGrounded", true);
+        ui = GameObject.Find("PolyCityUISystem").GetComponent<PolyCityUISystemController>();
+    }
+
+    private void HandleMovement()
     {
         /*
         // Get input for movement
@@ -112,9 +154,23 @@ public class PlayerController : MonoBehaviour
         Vector3 move = transform.right * moveX + transform.forward * moveZ;
 
         // Apply movement
-        controller.Move(move * forwardSpeed * Time.deltaTime);
+        characterController.Move(move * forwardSpeed * Time.deltaTime);
         */
         move.z = forwardSpeed;
+    }
+
+    private void CalculateMoveDistance()
+    {
+        // Calculate the distance moved along the Z axis since the last frame
+        float zDistanceMoved = Mathf.Abs(transform.position.z - zPosition);
+
+        // Update the total Z distance moved
+        totalZDistanceMoved += zDistanceMoved;
+
+        GameManager.Ins.Score = (int)totalZDistanceMoved / 10 + coin * 2;
+
+        // Update the last Z position to the current Z position
+        zPosition = transform.position.z;
     }
 
     private void Jump()
@@ -122,11 +178,7 @@ public class PlayerController : MonoBehaviour
         StopCoroutine(SlideRoutine());
         EndSlide();
 
-        if (jumpSoundEffect != null)
-        {
-            AudioSource.PlayClipAtPoint(jumpSoundEffect, transform.position, 0.5f);
-        }
-
+        AudioManager.Ins.PlaySound("Jump");
         velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
     }
 
@@ -141,15 +193,11 @@ public class PlayerController : MonoBehaviour
 
     private void StartSlide()
     {
-        if (jumpSoundEffect != null)
-        {
-            AudioSource.PlayClipAtPoint(jumpSoundEffect, transform.position, 0.5f);
-        }
-
+        AudioManager.Ins.PlaySound("Slide");
         isSliding = true;
         animator.SetBool("IsSliding", true);
         move.z = slideSpeed;
-        controller.height = slideHeight;
+        characterController.height = slideHeight;
     }
 
     private void EndSlide()
@@ -157,10 +205,10 @@ public class PlayerController : MonoBehaviour
         isSliding = false;
         animator.SetBool("IsSliding", false);
         move.z = forwardSpeed;
-        controller.height = originalHeight;
+        characterController.height = originalHeight;
     }
 
-    private void SideMoving()
+    private void SideMove()
     {
         targetPosition = transform.position.z * transform.forward + transform.position.y * transform.up;
 
@@ -178,15 +226,15 @@ public class PlayerController : MonoBehaviour
         if (Vector3.Distance(transform.position, targetPosition) > 0.05f)
         {
             Vector3 diff = targetPosition - transform.position;
-            Vector3 moveDir = diff.normalized * 30 * Time.deltaTime;
+            Vector3 moveDir = diff.normalized * sideMoveSpeed * Time.deltaTime;
 
             if (moveDir.sqrMagnitude < diff.magnitude)
             {
-                controller.Move(moveDir);
+                characterController.Move(moveDir);
             }
             else
             {
-                controller.Move(diff);
+                characterController.Move(diff);
             }
         }
     }

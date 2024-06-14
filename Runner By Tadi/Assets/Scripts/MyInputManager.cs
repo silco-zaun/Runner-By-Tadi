@@ -2,9 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class MyInputManager : MonoBehaviour
+public class MyInputManager : Singleton<MyInputManager>
 {
-    public static bool tap, swipeLeft, swipeRight, swipeUp, swipeDown;
+    public bool tap, swipeLeft, swipeRight, swipeUp, swipeDown;
     private bool isDraging = false;
     private Vector2 startTouch, swipeDelta;
 
@@ -12,7 +12,7 @@ public class MyInputManager : MonoBehaviour
     {
         tap = swipeDown = swipeUp = swipeLeft = swipeRight = false;
 
-        #region Standalone Inputs
+        // Standalone Inputs
         if (Input.GetMouseButtonDown(0))
         {
             tap = true;
@@ -24,9 +24,8 @@ public class MyInputManager : MonoBehaviour
             isDraging = false;
             Reset();
         }
-        #endregion
 
-        #region Mobile Input
+        // Mobile Input
         if (Input.touches.Length > 0)
         {
             if (Input.touches[0].phase == TouchPhase.Began)
@@ -41,10 +40,10 @@ public class MyInputManager : MonoBehaviour
                 Reset();
             }
         }
-        #endregion
 
         // Calculate the distance
         swipeDelta = Vector2.zero;
+
         if (isDraging)
         {
             if (Input.touches.Length < 0)
