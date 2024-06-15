@@ -7,7 +7,7 @@ public class VehicleController : MonoBehaviour
 {
     [SerializeField] private bool movable = false;
 
-    private float speed = 10f;
+    private float speed = 20f;
     private bool soundPlayed = false;
 
     // Start is called before the first frame update

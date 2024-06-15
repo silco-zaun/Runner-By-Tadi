@@ -135,6 +135,8 @@ public class PlayerController : Singleton<PlayerController>
     public void ResetPlayer()
     {
         transform.position = startPosition;
+        totalZDistanceMoved = 0;
+        coin = 0;
         GameManager.Ins.Score = 0;
         move = Vector3.zero;
         velocity = Vector3.zero;
